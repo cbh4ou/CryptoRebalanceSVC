@@ -44,10 +44,10 @@ class DummyExchange():
         self._balances = balances
         self._fee = fee
         self._rates = {}
-        for cur in rates or {}:
-            self._rates[cur] = {'mid': rates[cur],
-                                'high': rates[cur]*1.001,
-                                'low': rates[cur]*0.999,
+        for currency in rates or {}:
+            self._rates[currency] = {'mid': rates[currency],
+                                'high': rates[currency]*1.001,
+                                'low': rates[currency]*0.999,
                                 }
         
     @property

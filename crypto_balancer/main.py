@@ -39,6 +39,7 @@ def main(args=None):
 
     config = config[args.exchange]
 
+    # Tak
     try:
         targets = [x.split() for x in config['targets'].split('\n')]
         targets = dict([[a, float(b)] for (a, b) in targets])
@@ -60,92 +61,88 @@ def main(args=None):
                             config['api_secret'])
 
     print("Connected to exchange: {}".format(exchange.name))
-    print()
 
     if args.cancel:
         print("Cancelling open orders...")
         for order in exchange.cancel_orders():
             print("Cancelled order:", order['symbol'], order['id'])
-        print()
 
     threshold = float(config['threshold'])
     max_orders = int(args.max_orders)
 
-    portfolio = Portfolio.make_portfolio(targets, exchange, threshold, valuebase)
+    portfolio = Portfolio.make_portfolio(
+        targets, exchange, threshold, valuebase)
 
     print("Current Portfolio:")
-    for cur in portfolio.balances:
-        bal = portfolio.balances[cur]
-        pct = portfolio.balances_pct[cur]
-        tgt = targets[cur]
-        print("  {:<6s} {:<8.2f} ({:>5.2f} / {:>5.2f}%)"
-              .format(cur, bal, pct, tgt))
+    for currency in portfolio.balances:
+        bal = portfolio.balances[currency]
+        pct = portfolio.balances_pct[currency]
+        tgt = targets[currency]
+        # print("  {:<6s} {:<8.2f} ({:>5.2f} / {:>5.2f}%)"
+        #     .format(currency, bal, pct, tgt))
 
-    print()
     print("  Total value: {:.2f} {}".format(portfolio.valuation_quote,
                                             portfolio.quote_currency))
     balancer = SimpleBalancer()
     executor = Executor(portfolio, exchange, balancer)
-    res = executor.run(force=args.force,
+    executor_res = executor.run(force=args.force,
                        trade=args.trade,
                        max_orders=max_orders,
                        mode=args.mode)
 
     print("  Balance RMS error: {:.2g} / {:.2g}".format(
-        res['initial_portfolio'].balance_rms_error,
+        executor_res['initial_portfolio'].balance_rms_error,
         threshold))
 
     print("  Balance Max error: {:.2g} / {:.2g}".format(
-        res['initial_portfolio'].balance_max_error,
+        executor_res['initial_portfolio'].balance_max_error,
         threshold))
-    
-    print()
+
     if not portfolio.needs_balancing and not args.force:
         print("No balancing needed")
         sys.exit(0)
 
     print("Balancing needed{}:".format(" [FORCED]" if args.force else ""))
-    print()
+
     print("Proposed Portfolio:")
-    portfolio = res['proposed_portfolio']
+    portfolio = executor_res['proposed_portfolio']
 
     if not portfolio:
         print("Could not calculate a better portfolio")
         sys.exit(0)
 
-    for cur in portfolio.balances:
-        bal = portfolio.balances[cur]
-        pct = portfolio.balances_pct[cur]
-        tgt = targets[cur]
+    for currency in portfolio.balances:
+        bal = portfolio.balances[currency]
+        pct = portfolio.balances_pct[currency]
+        tgt = targets[currency]
         print("  {:<6s} {:<8.2f} ({:>5.2f} / {:>5.2f}%)"
-              .format(cur, bal, pct, tgt))
+              .format(currency, bal, pct, tgt))
 
-    print()
     print("  Total value: {:.2f} {}".format(portfolio.valuation_quote,
                                             portfolio.quote_currency))
     print("  Balance RMS error: {:.2g} / {:.2g}".format(
-        res['proposed_portfolio'].balance_rms_error,
+        executor_res['proposed_portfolio'].balance_rms_error,
         threshold))
 
     print("  Balance Max error: {:.2g} / {:.2g}".format(
-        res['proposed_portfolio'].balance_max_error,
+        executor_res['proposed_portfolio'].balance_max_error,
         threshold))
 
-    total_fee = '%s' % float('%.4g' % res['total_fee'])
+    total_fee = '%s' % float('%.4g' % executor_res['total_fee'])
     print("  Total fees to re-balance: {} {}"
           .format(total_fee,
                   portfolio.quote_currency))
 
-    print()
     print("Orders:")
     if args.trade:
-        for order in res['success']:
+        for order in executor_res['success']:
             print("  Submitted: {}".format(order))
 
-        for order in res['errors']:
+        for order in executor_res['errors']:
             print("  Failed: {}".format(order))
+            print("  Error Response: {}".format(order))
     else:
-        for order in res['orders']:
+        for order in executor_res['orders']:
             print("  " + str(order))
 
 

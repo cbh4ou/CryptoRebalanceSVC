@@ -29,7 +29,7 @@ class Executor():
                                            self.exchange,
                                            max_orders,
                                            mode)
-
+            
             if orders['proposed_portfolio']:
                 res['proposed_portfolio'] = orders['proposed_portfolio']
                 res['total_fee'] = orders['total_fee']

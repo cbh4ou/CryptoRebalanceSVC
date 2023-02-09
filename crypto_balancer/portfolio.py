@@ -1,18 +1,18 @@
 import math
-
+from crypto_balancer.ccxt_exchange import CCXTExchange
 
 class Portfolio():
 
     @classmethod
-    def make_portfolio(cls, targets, exchange,
-                       threshold=1.0, quote_currency="USDT"):
+    def make_portfolio(cls, targets, exchange: CCXTExchange,
+                       threshold=1.0, quote_currency="USD"):
         p = cls(targets, exchange, threshold, quote_currency)
         p.sync_balances()
         p.sync_rates()
         return p
 
-    def __init__(self, targets, exchange, threshold=1.0,
-                 quote_currency="USDT"):
+    def __init__(self, targets, exchange: CCXTExchange, threshold=1.0,
+                 quote_currency="USD"):
         self.targets = targets
         self.threshold = threshold
         self.exchange = exchange
@@ -30,7 +30,7 @@ class Portfolio():
         return p
 
     def sync_balances(self):
-        self.balances = self.exchange.balances.copy()
+        self.balances = self.exchange.get_total_balances
 
     def sync_rates(self):
         self.rates = self.exchange.rates.copy()
@@ -43,17 +43,16 @@ class Portfolio():
     def balances_quote(self):
         _balances_quote = {}
         qc = self.quote_currency
-        for cur in self.currencies:
-            amount = self.balances[cur]
-            if cur == self.quote_currency:
-                _balances_quote[cur] = amount
+        for currency in self.currencies:
+            amount = self.balances[currency]
+            if currency == self.quote_currency:
+                _balances_quote[currency] = amount
             else:
-                pair = f"{cur}/{qc}"
+                pair = f"{currency}/{qc}"
                 try:
-                    _balances_quote[cur] = amount * self.rates[pair]['mid']
+                    _balances_quote[currency] = amount * self.rates[pair]['mid']
                 except KeyError:
                     raise ValueError("Invalid pair: {}".format(pair))
-
         return _balances_quote
 
     @property
@@ -71,10 +70,10 @@ class Portfolio():
         _total = self.valuation_quote
 
         if not _total:
-            return {cur: 0 for cur in self.currencies}
+            return {currency: 0 for currency in self.currencies}
 
-        return {cur: (_balances_quote[cur] / _total) * 100.0
-                for cur in self.currencies}
+        return {currency: (_balances_quote[currency] / _total) * 100.0
+                for currency in self.currencies}
 
     @property
     def balance_errors_pct(self):
@@ -84,12 +83,12 @@ class Portfolio():
         if not _total:
             return []
 
-        def calc_diff(cur):
-            return _total * (self.targets[cur] / 100.0) \
-                - _balances_quote[cur]
+        def calc_diff(currency):
+            return _total * (self.targets[currency] / 100.0) \
+                - _balances_quote[currency]
 
-        pcts = [(calc_diff(cur) / _total) * 100.0
-                for cur in self.currencies]
+        pcts = [(calc_diff(currency) / _total) * 100.0
+                for currency in self.currencies]
         return pcts
 
     @property
@@ -112,8 +111,8 @@ class Portfolio():
         _balances_quote = self.balances_quote
         _total = self.valuation_quote
 
-        def calc_diff(cur):
-            return _total * (self.targets[cur] / 100.0) \
-                - _balances_quote[cur]
+        def calc_diff(currency):
+            return _total * (self.targets[currency] / 100.0) \
+                - _balances_quote[currency]
 
-        return {cur: calc_diff(cur) for cur in self.currencies}
+        return {currency: calc_diff(currency) for currency in self.currencies}

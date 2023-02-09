@@ -1,6 +1,8 @@
-from crypto_balancer.order import Order
 from itertools import product
 
+from crypto_balancer.order import Order
+from crypto_balancer.ccxt_exchange import CCXTExchange
+from crypto_balancer.portfolio import Portfolio
 class Attempt():
     def __init__(self, portfolio, orders=None, total_fee=0.0, depth=0,
                  pairs_processed=None):
@@ -20,7 +22,7 @@ class SimpleBalancer():
         res = product(positives, negatives)
         return res
 
-    def balance(self, initial_portfolio, exchange, max_orders=5, mode='mid'):
+    def balance(self, initial_portfolio: Portfolio, exchange: CCXTExchange, max_orders=5, mode='mid'):
         rates = exchange.rates
         quote_currency = initial_portfolio.quote_currency
 
@@ -38,10 +40,12 @@ class SimpleBalancer():
             diffs = self.permute_differences(
                 attempt.portfolio.differences_quote)
 
+            
             if not diffs or attempt.depth >= max_orders:
                 continue
 
             for pos, neg in diffs:
+                print(pos, neg)
                 p_cur, p_amount = pos
                 n_cur, n_amount = neg
 
@@ -54,7 +58,7 @@ class SimpleBalancer():
                     trade_direction = "BUY"
                     trade_pair = pair
 
-                # if previous failed then reverse paid and try
+                # if previous failed then reverse and try
                 # sell instead
                 pair = "{}/{}".format(n_cur, p_cur)
                 if pair in rates:
@@ -146,10 +150,11 @@ class SimpleBalancer():
                               x.total_fee,
                               len(x.orders),
                               x.orders)
+
         decorated_attempts = [(sort_key(x), x) for x in attempts]
         decorated_attempts.sort(key=lambda x: x[0])
         best_attempt = decorated_attempts[0][1]
-
+        print(best_attempt.orders)
         return {'orders': sorted(best_attempt.orders),
                 'total_fee': best_attempt.total_fee,
                 'initial_portfolio': initial_portfolio,
