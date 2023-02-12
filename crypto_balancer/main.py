@@ -5,7 +5,7 @@ import sys
 
 from crypto_balancer.simple_balancer import SimpleBalancer
 from crypto_balancer.ccxt_exchange import CCXTExchange, exchanges
-from crypto_balancer.executor import Executor
+from crypto_balancer.executor import TradeExecutor
 from crypto_balancer.portfolio import Portfolio
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,6 @@ def main(args=None):
     valuebase = config.get('valuebase') or args.valuebase
 
     exchange = CCXTExchange(args.exchange,
-                            targets.keys(),
                             config['api_key'],
                             config['api_secret'])
 
@@ -84,11 +83,11 @@ def main(args=None):
     print("  Total value: {:.2f} {}".format(portfolio.valuation_quote,
                                             portfolio.quote_currency))
     balancer = SimpleBalancer()
-    executor = Executor(portfolio, exchange, balancer)
+    executor = TradeExecutor(portfolio, exchange, balancer)
     executor_res = executor.run(force=args.force,
-                       trade=args.trade,
-                       max_orders=max_orders,
-                       mode=args.mode)
+                                trade=args.trade,
+                                max_orders=max_orders,
+                                mode=args.mode)
 
     print("  Balance RMS error: {:.2g} / {:.2g}".format(
         executor_res['initial_portfolio'].balance_rms_error,

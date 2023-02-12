@@ -1,17 +1,18 @@
 import logging
 
 from crypto_balancer.order import Order
-
+from crypto_balancer.ccxt_exchange import CCXTExchange
+from crypto_balancer.simple_balancer import SimpleBalancer
 logger = logging.getLogger(__name__)
 
 
-class Executor():
+class TradeExecutor():
 
-    def __init__(self, portfolio, exchange, balancer):
+    def __init__(self, exchange: CCXTExchange, balancer: SimpleBalancer, do_smart_routing: bool):
         self.portfolio = portfolio
         self.exchange = exchange
         self.balancer = balancer
-
+        self.
     def run(self, force=False, trade=False, max_orders=5, mode='mid'):
 
         balances = self.portfolio.balances
@@ -29,7 +30,7 @@ class Executor():
                                            self.exchange,
                                            max_orders,
                                            mode)
-            
+
             if orders['proposed_portfolio']:
                 res['proposed_portfolio'] = orders['proposed_portfolio']
                 res['total_fee'] = orders['total_fee']

@@ -5,7 +5,7 @@ import cProfile
 from crypto_balancer.simple_balancer import SimpleBalancer
 from crypto_balancer.portfolio import Portfolio
 from crypto_balancer.dummy_exchange import DummyExchange
-from crypto_balancer.executor import Executor
+from crypto_balancer.executor import TradeExecutor
 from crypto_balancer.order import Order
 
 import sys
@@ -227,7 +227,8 @@ class test_Portfolio(unittest.TestCase):
         total_base = 0
         for currency in current:
             symbol = "{}/{}".format(currency, portfolio.quote_currency)
-            final_base[currency] = current[currency] * exchange.rates[symbol]['mid']
+            final_base[currency] = current[currency] * \
+                exchange.rates[symbol]['mid']
             final_base[currency] += portfolio.differences_quote[currency]
             total_base += final_base[currency]
 
@@ -263,7 +264,8 @@ class test_Portfolio(unittest.TestCase):
         total_base = 0
         for currency in current:
             symbol = "{}/{}".format(currency, portfolio.quote_currency)
-            final_base[currency] = current[currency] * exchange.rates[symbol]['mid']
+            final_base[currency] = current[currency] * \
+                exchange.rates[symbol]['mid']
             final_base[currency] += portfolio.differences_quote[currency]
             total_base += final_base[currency]
 
@@ -544,7 +546,7 @@ class test_SimpleBalancer(unittest.TestCase):
         # Test the orders we get are correct
         expected = [Order('XLM/XRP', 'BUY', 6.551686481727605, 0.283366),
                     Order('XRP/BTC', 'BUY', 28.11529866566897, 8.102e-05),
-                    Order('XRP/ETH', 'SELL', 13.236589350292975, 0.00217366)] 
+                    Order('XRP/ETH', 'SELL', 13.236589350292975, 0.00217366)]
         self.assertEqual(res['orders'], expected)
 
     def test_real2a_cheaper(self):
@@ -575,7 +577,6 @@ class test_SimpleBalancer(unittest.TestCase):
 
         self.assertTrue(res2['total_fee'] < res1['total_fee'])
 
-        
     def test_real2a_max_orders(self):
 
         targets = {'XRP': 40,
@@ -756,7 +757,7 @@ class test_Executor(unittest.TestCase):
         exchange = DummyExchange(targets.keys(), current, rates, fee)
         portfolio = Portfolio.make_portfolio(targets, exchange)
         balancer = SimpleBalancer()
-        executor = Executor(portfolio, exchange, balancer)
+        executor = TradeExecutor(portfolio, exchange, balancer)
         return executor
 
     def test_threshold_inbalance(self):
@@ -855,7 +856,7 @@ class test_Executor(unittest.TestCase):
         exchange = DummyExchange(targets.keys(), current, rates, 0.001)
         portfolio = Portfolio.make_portfolio(targets, exchange)
         balancer = SimpleBalancer()
-        executor = Executor(portfolio, exchange, balancer)
+        executor = TradeExecutor(portfolio, exchange, balancer)
 
         res = executor.run(force=True, trade=False)
 
@@ -883,7 +884,7 @@ class test_Executor(unittest.TestCase):
         exchange = DummyExchange(targets.keys(), current, rates, 0.001)
         portfolio = Portfolio.make_portfolio(targets, exchange)
         balancer = SimpleBalancer()
-        executor = Executor(portfolio, exchange, balancer)
+        executor = TradeExecutor(portfolio, exchange, balancer)
 
         res = executor.run(force=True, trade=True)
 

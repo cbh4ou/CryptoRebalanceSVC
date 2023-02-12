@@ -1,9 +1,7 @@
 class Order():
-    def __init__(self, pair, direction, amount, price, total_in_quote = None):
-        if direction.upper() not in ['BUY', 'SELL']:
-            raise ValueError("{} is not a valid direction".format(direction))
+    def __init__(self, pair : str, direction : str, amount : float, price : float, total_in_quote : float = None):
         self.pair = pair
-        self.direction = direction
+        self.direction = direction.upper()
         self.amount = float(amount)
         self.price = float(price)
         self.type_ = None

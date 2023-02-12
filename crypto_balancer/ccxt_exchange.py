@@ -7,15 +7,15 @@ exchanges = ccxt.exchanges
 
 class CCXTExchange():
 
-    def __init__(self, name, currencies, api_key, api_secret, do_cancel_orders=True):
+    def __init__(self, name, api_key, api_secret, do_cancel_orders=True):
         self.name = name
-        self.currencies = currencies
         self.exch = getattr(ccxt, name)({'nonce': ccxt.Exchange.milliseconds})
         self.exch.apiKey = api_key
         self.exch.secret = api_secret
         self.exch.requests_trust_env = True
         self.do_cancel_orders = do_cancel_orders
         self.exch.load_markets()
+        #self.cancel_orders
 
     @property
     @lru_cache(maxsize=None)
@@ -47,14 +47,23 @@ class CCXTExchange():
 
     @property
     @lru_cache(maxsize=None)
-    def pairs(self):
-        _pairs = []
-        for i in self.currencies:
-            for j in self.currencies:
-                pair = "{}/{}".format(i, 'USD')
+    def get_trade_fees(self, symbol: str, type: str, side: str, amount: float, price: float):
+        return self.exch.calculate_fee(symbol=symbol, type=type,
+                                       side=side, amount=amount, price=price)
+
+    @property
+    @lru_cache(maxsize=None)
+    def get_matched_pairs(self, pairs : list) -> list[str]:
+        active_pairs = []
+        for i in pairs:
+            for j in pairs:
+                pair = self.format_currency(i, j)
                 if pair in self.exch.markets and self.exch.markets[pair]['active']:
-                    _pairs.append(pair)
-        return _pairs
+                    active_pairs.append(pair)
+        return active_pairs
+
+    def format_currency(base : str, quote: str) -> str:
+        return "{}/{}".format(base, quote)
 
     @property
     @lru_cache(maxsize=None)
@@ -127,10 +136,14 @@ class CCXTExchange():
                                       order.price)
 
     def cancel_orders(self):
-        cancelled_orders = []
-        for pair in self.pairs:
-            open_orders = self.exch.fetch_open_orders(symbol=pair)
-            for order in open_orders:
-                self.exch.cancel_order(order['id'], order['symbol'])
-                cancelled_orders.append(order)
-        return cancelled_orders
+        if self.cancel_orders:
+            cancelled_orders = []
+            for pair in self.pairs:
+                open_orders = self.exch.fetch_open_orders(symbol=pair)
+                for order in open_orders:
+                    self.exch.cancel_order(order['id'], order['symbol'])
+                    cancelled_orders.append(order)
+            return cancelled_orders
+        
+    def get_portfolio_balance() -> float:
+        return 0.0
