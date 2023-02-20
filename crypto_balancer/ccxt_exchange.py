@@ -16,6 +16,7 @@ class CCXTExchange():
         self.exch.requests_trust_env = True
         self.do_cancel_orders = do_cancel_orders
         self.exch.load_markets()
+        self.tickers = self.exch.fetch_tickers()
         # self.cancel_orders
 
     @property
@@ -44,24 +45,30 @@ class CCXTExchange():
         balance = self.exch.fetch_balance()
         total_destination_value = 0
         for code, quantity in balance['total'].items():
-            if code == destination_code:
+            if code == destination_code or quantity == 0:
                 total_destination_value += quantity
             else:
                 routes = self.get_smart_route(code, destination_code)
-                print(routes)
                 if routes:
-                    total_destination_value += self.convert_routes_to_cost(
+                    value = self.convert_route_to_cost(
                         quantity, routes)
+                    total_destination_value += value
+                    # print(code, routes, quantity, value,
+                    #    total_destination_value)
         return total_destination_value
 
-    def convert_routes_to_cost(self, init_quantity: float, routes: dict):
-        init_ticker = self.exch.fetch_ticker(routes[0]['symbol'])
-        init_cost = (init_quantity * init_ticker["last"])
+    def convert_route_to_cost(self, init_quantity: float, routes: dict):
+        init_ticker = self.tickers.get(routes[0]['symbol'])
+        init_cost = (init_quantity * (1 / init_ticker["last"])) if routes[0]["direction"] == 'buy' else (
+            init_quantity * init_ticker["last"])
         if init_cost == 0:
             return 0
         if len(routes) > 1:
-            dest_ticker = self.exch.fetch_ticker(routes[0]['symbol'])
-            return init_cost / dest_ticker["last"]
+            dest_ticker_price = self.tickers.get(
+                routes[1]['symbol'])['last']
+            cost = init_cost / dest_ticker_price if routes[1]["direction"] == 'buy' else init_cost / (
+                1 / dest_ticker_price)
+            return cost
         else:
             return init_cost
 
@@ -108,12 +115,17 @@ class CCXTExchange():
                    if symbol['active']]
         {grouped_symbols.setdefault(item['symbol'], []).append(
             item) for item in symbols}
+
         sell_ticker = grouped_symbols.get(sell_symbol, None)
         buy_ticker = grouped_symbols.get(buy_symbol, None)
         if not [symbol for symbol in symbols
-                if symbol['base'] == starting_code]:
+                if symbol['base'] == starting_code] and not sell_ticker and not buy_ticker:
             return None
-        elif not sell_ticker and not buy_ticker:
+        elif buy_ticker:
+            return [{"direction": "buy", "symbol": buy_symbol}]
+        elif sell_ticker:
+            return [{"direction": "sell", "symbol": sell_symbol}]
+        else:
             quote_routes = [symbol['quote']
                             for symbol in symbols if symbol['base'] == starting_code]
             trade_options = [symbol for symbol in symbols if (symbol["quote"] ==
@@ -121,10 +133,6 @@ class CCXTExchange():
                                                                                                                            quote_routes or symbol["base"] in quote_routes)]
             is_buy = trade_options[0]['base'] == destination_code
             return self.build_trade_routes(starting_code, trade_options[0], is_buy, quote_routes)
-        elif buy_ticker:
-            return [{"direction": "buy", "symbol": buy_symbol}]
-        else:
-            return [{"direction": "sell", "symbol": sell_symbol}]
 
     def build_trade_routes(self, starting_code: str, route_to_destination: dict, is_buy: bool, quote_routes: list[str]) -> list[dict]:
         # STMX -> USDT -> ADA
