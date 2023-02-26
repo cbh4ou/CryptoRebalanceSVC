@@ -2,7 +2,7 @@ import unittest
 from pstats import Stats
 import cProfile
 
-from crypto_balancer.simple_balancer import SimpleBalancer
+from crypto_balancer.rebalancer import SimpleBalancer
 from crypto_balancer.portfolio import Portfolio
 from crypto_balancer.dummy_exchange import DummyExchange
 from crypto_balancer.executor import TradeExecutor

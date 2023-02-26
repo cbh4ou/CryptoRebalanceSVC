@@ -6,7 +6,7 @@ class Portfolio():
     @classmethod
     def make_portfolio(cls, targets, exchange: CCXTExchange,
                        threshold=1.0, quote_currency="USD"):
-        p = cls(targets, exchange, threshold, quote_currency)
+        p = cls(targets, exchange, threshold)
         p.sync_balances()
         p.sync_rates()
         return p

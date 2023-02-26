@@ -3,7 +3,7 @@ import configparser
 import logging
 import sys
 
-from crypto_balancer.simple_balancer import SimpleBalancer
+from crypto_balancer.rebalancer import SimpleBalancer
 from crypto_balancer.ccxt_exchange import CCXTExchange, exchanges
 from crypto_balancer.executor import TradeExecutor
 from crypto_balancer.portfolio import Portfolio

@@ -10,13 +10,18 @@ class CCXTExchange():
 
     def __init__(self, name, api_key, api_secret, do_cancel_orders=True):
         self.name = name
-        self.exch = getattr(ccxt, name)({'nonce': ccxt.Exchange.milliseconds})
+        self.exch = getattr(ccxt, name)(
+            {'nonce': ccxt.Exchange.milliseconds, 'defaultType': 'spot'})
+        self.exch.options['defaultType'] = 'spot'
         self.exch.apiKey = api_key
         self.exch.secret = api_secret
         self.exch.requests_trust_env = True
         self.do_cancel_orders = do_cancel_orders
         self.exch.load_markets()
         self.tickers = self.exch.fetch_tickers()
+        self.rates = self.get_rates()
+        self.free_balances = self.get_free_balances
+        self.markets = self.exch.markets
         # self.cancel_orders
 
     @property
@@ -41,38 +46,39 @@ class CCXTExchange():
         total_balance = self.exch.fetch_balance()['total']
         return {total_balance[base] for base in total_balance.keys() if total_balance[base] != 0}
 
-    def get_portfolio_total(self, destination_code) -> float:
+    def get_portfolio_total(self, destination_code: str, mode: str) -> float:
+        codes = {}
         balance = self.exch.fetch_balance()
         total_destination_value = 0
         for code, quantity in balance['total'].items():
             if code == destination_code or quantity == 0:
                 total_destination_value += quantity
+                codes[code] = quantity
             else:
                 routes = self.get_smart_route(code, destination_code)
                 if routes:
                     value = self.convert_route_to_cost(
-                        quantity, routes)
+                        quantity, routes, mode)
                     total_destination_value += value
+                    codes[code] = value
                     # print(code, routes, quantity, value,
                     #    total_destination_value)
-        return total_destination_value
+        return {"total": total_destination_value, "codes": codes}
 
-    def convert_route_to_cost(self, init_quantity: float, routes: dict):
-        init_ticker = self.tickers.get(routes[0]['symbol'])
-        init_cost = (init_quantity * (1 / init_ticker["last"])) if routes[0]["direction"] == 'buy' else (
-            init_quantity * init_ticker["last"])
-        if init_cost == 0:
+    def convert_route_to_cost(self, init_quantity: float, routes: dict, mode: str) -> float:
+        init_cost = self.get_rate(routes[0]['symbol'])[mode]
+        init_value = (init_quantity * (1 / init_cost)) if routes[0]["direction"] == 'buy' else (
+            init_quantity * init_cost)
+        if init_value == 0:
             return 0
         if len(routes) > 1:
-            dest_ticker_price = self.tickers.get(
-                routes[1]['symbol'])['last']
-            cost = init_cost / dest_ticker_price if routes[1]["direction"] == 'buy' else init_cost / (
+            dest_ticker_price = self.get_rate(
+                routes[1]['symbol'])[mode]
+            cost = init_value / dest_ticker_price if routes[1]["direction"] == 'buy' else init_value / (
                 1 / dest_ticker_price)
             return cost
         else:
-            return init_cost
-
-        # ADA/USDT (100 * .4) = $40, ETH/USDT Cost
+            return init_value
 
     @property
     @lru_cache(maxsize=None)
@@ -109,7 +115,6 @@ class CCXTExchange():
         # will return ordered pairs that we will need to sell to get to our destination
         sell_symbol = self.format_symbol(starting_code, destination_code)
         buy_symbol = self.format_symbol(destination_code, starting_code)
-        symbols = self.exch.markets.values()
         grouped_symbols = {}
         symbols = [symbol for symbol in self.exch.markets.values()
                    if symbol['active']]
@@ -152,19 +157,15 @@ class CCXTExchange():
     def format_symbol(base: str, quote: str) -> str:
         return "{}/{}".format(base, quote)
 
-    @property
     @lru_cache(maxsize=None)
-    def rates(self):
+    def get_rates(self) -> dict[dict]:
         _rates = {}
-        if self.exch.has['fetchTickers']:
-            tickers = self.exch.fetchTickers()
-        else:
-            tickers = {}
-
-        for pair in self.pairs:
-            if tickers:
-                high = tickers[pair]['ask']
-                low = tickers[pair]['bid']
+        tickers = self.tickers
+        for pair in tickers:
+            ticker = tickers[pair]
+            if 'ask' in ticker and 'bid' in ticker:
+                high = ticker['ask']
+                low = ticker['bid']
             else:
                 orderbook = self.exch.fetchOrderBook(pair)
                 high = orderbook['asks'][0][0]
@@ -176,18 +177,24 @@ class CCXTExchange():
 
         return _rates
 
+    def get_rate(self, symbol: str) -> dict[dict]:
+        ticker = self.tickers[symbol]
+        if 'ask' in ticker and 'bid' in ticker:
+            high = ticker['ask']
+            low = ticker['bid']
+        else:
+            orderbook = self.exch.fetchOrderBook(symbol)
+            high = orderbook['asks'][0][0]
+            low = orderbook['bids'][0][0]
+        mid = (high + low) / 2.0
+        return {'mid': mid, 'high': high, 'low': low, }
+
     def get_lowest_fee_option(self, options: list[dict]):
         pass
 
-    @property
-    @lru_cache(maxsize=None)
-    def get_limits(self):
-        return {pair: self.exch.markets[pair]['limits']
-                for pair in self.pairs}
-
     @lru_cache(maxsize=None)
     def get_limit(self, pair: str):
-        return {pair: self.exch.markets[pair]['limits']}
+        return self.markets[pair]['limits']
 
     @property
     @lru_cache(maxsize=None)
@@ -215,6 +222,21 @@ class CCXTExchange():
             return None
         order.type_ = 'LIMIT'
         return order
+
+    def check_limits(self, starting_code: str, destination_code: str, weight: float, mode: str, total: float):
+        trade_routes = self.get_smart_route(
+            starting_code, destination_code)
+        symbol = ""
+        if trade_routes:
+            symbol = trade_routes[-1]["symbol"]
+        else:
+            return False
+        limit = self.get_limit(symbol)
+        price = self.get_rate(symbol)[mode]
+        if (total * weight) / price < limit['amount']['min'] or abs(weight * total) < limit['cost']['min']:
+            return False
+        else:
+            return True
 
     def execute_order(self, order):
         if not order.type_:
