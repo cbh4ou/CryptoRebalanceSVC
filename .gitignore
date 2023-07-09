@@ -108,3 +108,6 @@ config.ini
 
 # jupyter notebook
 *.ipynb
+
+# data docs
+*.csv
