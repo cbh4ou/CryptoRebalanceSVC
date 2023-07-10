@@ -12,7 +12,8 @@
     "python.linting.enabled": true,
     "python.linting.lintOnSave": true,
     "python.linting.flake8Args": [
-        "--max-line-length=88"
+        "--max-line-length=88",
+        "--ignore=W503"
     ],
     "python.formatting.provider": "black",
     "editor.formatOnSave": true
