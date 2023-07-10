@@ -218,10 +218,10 @@ class CCXTExchange():
 
     def check_limits(self, starting_code: str, destination_code: str, weight: float, mode: str, total: float) -> bool:
         trade_routes = self.get_smart_route(starting_code, destination_code)
-        symbol = trade_routes[-1]["symbol"] if trade_routes else ""
+        symbol = trade_routes[-1]["symbol"] if trade_routes else "" #Add global handler for errors on empty string
         limit = self.get_limit(symbol)
         price = self.get_rate(symbol)[mode]
-        return not ((total * weight) / price < limit['amount']['min'] or abs(weight * total) < limit['cost']['min'])
+        return not (abs(total * weight) / price < limit['amount']['min'] or abs(weight * total) < limit['cost']['min'])
 
     def execute_order(self, order):
         if not order.type_:
