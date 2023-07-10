@@ -67,8 +67,9 @@ docs/_build/
 # PyBuilder
 target/
 
-# Jupyter Notebook
-.ipynb_checkpoints/
+# Jupyter Notebook (except for notebooks folder)
+*.ipynb
+!notebooks/*.ipynb
 
 # pyenv
 .python-version
@@ -104,5 +105,6 @@ venv.bak/
 # Config
 config.ini
 
-# Ignore CSV files in other directories
-**/data/*.csv
+# Ignore all CSV files except those in data folder
+*.csv
+!data/*.csv
