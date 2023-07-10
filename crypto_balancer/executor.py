@@ -9,10 +9,8 @@ logger = logging.getLogger(__name__)
 class TradeExecutor():
 
     def __init__(self, exchange: CCXTExchange, balancer: Rebalancer, do_smart_routing: bool):
-        self.portfolio = portfolio
         self.exchange = exchange
         self.balancer = balancer
-        self.
     def run(self, force=False, trade=False, max_orders=5, mode='mid'):
 
         balances = self.portfolio.balances
