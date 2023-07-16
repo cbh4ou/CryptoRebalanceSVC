@@ -1,10 +1,20 @@
 import ccxt
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
+from functools import lru_cache
 from crypto_balancer.order import Order
+
+exchanges = ccxt.exchanges
+
+
+@dataclass
+class AssetBalance:
+    asset: str
+    balance: str
 
 
 class CCXTExchange:
-    def __init__(self, name, api_key, api_secret, sandbox=True, do_cancel_orders=True):
+    def __init__(self, name, api_key, api_secret, do_cancel_orders=True):
         """This class holds all exchange operation functions for building
         trade routes, fetching portfolio details, tickers, and commiting orders
 
@@ -19,43 +29,32 @@ class CCXTExchange:
         self.exch = getattr(ccxt, name)(
             {"nonce": ccxt.Exchange.milliseconds, "defaultType": "spot"}
         )
-        self.exch.set_sandbox_mode(True)
-        self.exch.apiKey: str = api_key
-        self.exch.secret: str = api_secret
-        self.exch.requests_trust_env: bool = True
-        self.do_cancel_orders: bool = do_cancel_orders
-        self.exch.load_markets(True)
+        self.exch.options["defaultType"] = "spot"
+        self.exch.apiKey = api_key
+        self.exch.secret = api_secret
+        self.exch.requests_trust_env = True
+        self.do_cancel_orders = do_cancel_orders
+        self.exch.load_markets()
         self.tickers = self.exch.fetch_tickers()
         self.rates = self.get_rates()
         self.free_balances = self.get_free_balances
         self.markets = self.exch.markets
         # self.cancel_orders
 
-    def get_free_balances(self):
+    def get_free_balances(self) -> List[AssetBalance]:
         # gets free balances
         # If we cancel orders, we will use this to accurately get total free to trade
-        balance_info = self.exch.fetch_balance()["info"]["balances"]
-        return {
-            holding["asset"]: free
-            for holding in balance_info
-            if (free := float(holding["free"])) != 0  # ignore 0 balance
-        }
+        return self.exch.fetch_balance()["free"]
 
-    def get_locked_balances(self):
+    def get_locked_balances(self) -> Dict[str, str]:
+        # gets locked balances
         # gets locked (coins held in trades, maybe staked) balances
-        balance_info = self.exch.fetch_balance()["info"]["balances"]
-        return {
-            holding["asset"]: locked
-            for holding in balance_info
-            if (locked := float(holding["locked"])) != 0  # ignore 0 balance
-        }
+        return self.exch.fetch_balance()["used"]
 
-    def get_total_balances(self):
+    def get_total_balances(self) -> Dict[str, str]:
         # we need all coin balances to accurately calculate portfolio total
         # note: this does not mean total available to trade
-        total_balance = self.exch.fetch_balance()["total"]
-        return {
-            base: balance for base, balance in total_balance.items() if balance != 0}
+        return self.exch.fetch_balance()["used"]
 
     def get_portfolio_total(
         self, destination_code: str, mode: str
@@ -98,7 +97,7 @@ class CCXTExchange:
 
     def get_held_assets(self):
         total_balance = self.exch.fetch_balance()["total"]
-        return [base for base, balance in total_balance.items() if balance != 0]
+        return [base for base in total_balance.keys() if total_balance[base] != 0]
 
     def get_trade_fees(
         self, symbol: str, type: str, side: str, amount: float, price: float
@@ -202,6 +201,7 @@ class CCXTExchange:
     def format_symbol(base: str, quote: str) -> str:
         return "{}/{}".format(base, quote)
 
+    @lru_cache(maxsize=None)
     def get_rates(self) -> Dict[str, Dict[str, float]]:
         rates = {}
         tickers = self.tickers
@@ -234,10 +234,12 @@ class CCXTExchange:
     def get_lowest_fee_option(self, options: list[dict]):
         pass
 
+    @lru_cache(maxsize=None)
     def get_limit(self, pair: str):
         return self.markets[pair]["limits"]
 
     @property
+    @lru_cache(maxsize=None)
     def fee(self):
         return self.exch.fees["trading"]["maker"]
 
@@ -254,9 +256,8 @@ class CCXTExchange:
             return None
 
         if (
-            order.amount
-            < limits["amount"]["min"]
-            # or order.amount * order.price < limits["cost"]["min"]
+            order.amount < limits["amount"]["min"]
+            or order.amount * order.price < limits["cost"]["min"]
         ):
             return None
 
@@ -271,22 +272,16 @@ class CCXTExchange:
         mode: str,
         total: float,
     ) -> bool:
-        if starting_code == destination_code:
-            # Codes are the same, return False or handle the case as needed
-            return False
-
         trade_routes = self.get_smart_route(starting_code, destination_code)
         # Add global handler for errors on empty string
         symbol = trade_routes[-1]["symbol"] if trade_routes else ""
         limit = self.get_limit(symbol)
         price = self.get_rate(symbol)[mode]
         return not (
-            abs(total * weight) / price
-            < limit["amount"]["min"]
-            # or abs(weight * total) < limit["cost"]["min"]
+            abs(total * weight) / price < limit["amount"]["min"]
+            or abs(weight * total) < limit["cost"]["min"]
         )
 
-    # not final
     def execute_order(self, order):
         if not order.type_:
             raise ValueError("Order needs preprocessing first")
@@ -294,7 +289,6 @@ class CCXTExchange:
             order.pair, order.type_, order.direction, order.amount, order.price
         )
 
-    # not final
     def cancel_orders(self):
         if self.cancel_orders:
             cancelled_orders = []
@@ -304,3 +298,6 @@ class CCXTExchange:
                     self.exch.cancel_order(order["id"], order["symbol"])
                     cancelled_orders.append(order)
             return cancelled_orders
+
+    def get_portfolio_balance() -> float:
+        return 0.0
