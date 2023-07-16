@@ -1,16 +1,7 @@
 import ccxt
-from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
 from functools import lru_cache
 from crypto_balancer.order import Order
-
-exchanges = ccxt.exchanges
-
-
-@dataclass
-class AssetBalance:
-    asset: str
-    balance: str
 
 
 class CCXTExchange:
@@ -25,23 +16,23 @@ class CCXTExchange:
             do_cancel_orders (bool, optional): cancels pending limit orders
                 before proceeding. Defaults to True.
         """
-        self.name = name
-        self.exch = getattr(ccxt, name)(
+        self.name: str = name
+        self.exch: ccxt.Exchange = getattr(ccxt, name)(
             {"nonce": ccxt.Exchange.milliseconds, "defaultType": "spot"}
         )
         self.exch.options["defaultType"] = "spot"
-        self.exch.apiKey = api_key
-        self.exch.secret = api_secret
-        self.exch.requests_trust_env = True
-        self.do_cancel_orders = do_cancel_orders
+        self.exch.apiKey: str = api_key
+        self.exch.secret: str = api_secret
+        self.exch.requests_trust_env: bool = True
+        self.do_cancel_orders: bool = do_cancel_orders
         self.exch.load_markets()
-        self.tickers = self.exch.fetch_tickers()
-        self.rates = self.get_rates()
+        self.tickers: str = self.exch.fetch_tickers()
+        self.rates: Dict[str, Dict[str, float]] = self.get_rates()
         self.free_balances = self.get_free_balances
         self.markets = self.exch.markets
         # self.cancel_orders
 
-    def get_free_balances(self) -> List[AssetBalance]:
+    def get_free_balances(self) -> Dict[str, str]:
         # gets free balances
         # If we cancel orders, we will use this to accurately get total free to trade
         return self.exch.fetch_balance()["free"]
@@ -200,7 +191,6 @@ class CCXTExchange:
     def format_symbol(base: str, quote: str) -> str:
         return "{}/{}".format(base, quote)
 
-    @lru_cache(maxsize=None)
     def get_rates(self) -> Dict[str, Dict[str, float]]:
         rates = {}
         tickers = self.tickers
@@ -233,12 +223,9 @@ class CCXTExchange:
     def get_lowest_fee_option(self, options: list[dict]):
         pass
 
-    @lru_cache(maxsize=None)
     def get_limit(self, pair: str):
         return self.markets[pair]["limits"]
 
-    @property
-    @lru_cache(maxsize=None)
     def fee(self):
         return self.exch.fees["trading"]["maker"]
 
