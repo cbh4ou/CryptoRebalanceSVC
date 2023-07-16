@@ -47,14 +47,13 @@ class CCXTExchange:
         return self.exch.fetch_balance()["free"]
 
     def get_locked_balances(self) -> Dict[str, str]:
-        # gets locked balances
         # gets locked (coins held in trades, maybe staked) balances
         return self.exch.fetch_balance()["used"]
 
     def get_total_balances(self) -> Dict[str, str]:
         # we need all coin balances to accurately calculate portfolio total
         # note: this does not mean total available to trade
-        return self.exch.fetch_balance()["used"]
+        return self.exch.fetch_balance()["total"]
 
     def get_portfolio_total(
         self, destination_code: str, mode: str
