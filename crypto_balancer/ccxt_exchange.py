@@ -5,7 +5,14 @@ from crypto_balancer.order import Order
 
 
 class CCXTExchange:
-    def __init__(self, name, api_key, api_secret, do_cancel_orders=True):
+    def __init__(
+        self,
+        name,
+        api_key,
+        api_secret,
+        do_cancel_orders: bool = True,
+        sandbox: bool = True,
+    ):
         """This class holds all exchange operation functions for building
         trade routes, fetching portfolio details, tickers, and commiting orders
 
@@ -20,6 +27,7 @@ class CCXTExchange:
         self.exch: ccxt.Exchange = getattr(ccxt, name)(
             {"nonce": ccxt.Exchange.milliseconds, "defaultType": "spot"}
         )
+        self.exch.set_sandbox_mode(sandbox)
         self.exch.options["defaultType"] = "spot"
         self.exch.apiKey: str = api_key
         self.exch.secret: str = api_secret
