@@ -34,28 +34,16 @@ class CCXTExchange:
     def get_free_balances(self):
         # gets free balances
         # If we cancel orders, we will use this to accurately get total free to trade
-        balance_info = self.exch.fetch_balance()["info"]["balances"]
-        return {
-            holding["asset"]: free
-            for holding in balance_info
-            if (free := float(holding["free"])) != 0  # ignore 0 balance
-        }
+        return self.exch.fetch_balance()["free"]
 
-    def get_locked_balances(self):
+    def get_locked_balances(self) -> Dict[str, str]:
         # gets locked (coins held in trades, maybe staked) balances
-        balance_info = self.exch.fetch_balance()["info"]["balances"]
-        return {
-            holding["asset"]: locked
-            for holding in balance_info
-            if (locked := float(holding["locked"])) != 0  # ignore 0 balance
-        }
+        return self.exch.fetch_balance()["used"]
 
-    def get_total_balances(self):
+    def get_total_balances(self) -> Dict[str, str]:
         # we need all coin balances to accurately calculate portfolio total
         # note: this does not mean total available to trade
-        total_balance = self.exch.fetch_balance()["total"]
-        return {
-            base: balance for base, balance in total_balance.items() if balance != 0}
+        return self.exch.fetch_balance()["total"]
 
     def get_portfolio_total(
         self, destination_code: str, mode: str
