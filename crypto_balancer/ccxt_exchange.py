@@ -89,7 +89,8 @@ class CCXTExchange:
         else:
             init_value = init_quantity * rates[routes[0]["symbol"]]
 
-        # If the initial value is 0 or there is only one route, return the initial value.
+        # If the initial value is 0 or there is only one route,
+        # return the initial value.
         if init_value == 0 or len(routes) == 1:
             return init_value
 
@@ -209,7 +210,8 @@ class CCXTExchange:
             # Determine the direction of the second route based on is_second_route
             second_route_direction = "buy"
 
-            # Depending on is_second_route, the symbol can be either base-quote or quote-base
+            # Depending on is_second_route,
+            # the symbol can be either base-quote or quote-base
             second_route_symbol = self.format_symbol(base, quote)
 
             # Create the second route
