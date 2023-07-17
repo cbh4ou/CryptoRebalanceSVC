@@ -33,10 +33,10 @@ class CCXTExchange:
         self.exch.requests_trust_env: bool = True
         self.do_cancel_orders: bool = do_cancel_orders
         self.exch.load_markets()
-        
+
     def reload_markets(self):
         self.exch.load_markets(True)
-    
+
     def get_free_balances(self) -> Dict[str, str]:
         # gets free balances
         # If we cancel orders, we will use this to accurately get total free to trade
@@ -72,23 +72,22 @@ class CCXTExchange:
     def convert_route_to_cost(
         self, init_quantity: float, routes: List[Dict[str, Union[str, bool]]], mode: str
     ) -> float:
-        init_cost = self.get_rate(routes[0]["symbol"])[mode]
-        init_value = (
-            (init_quantity * (1 / init_cost))
-            if routes[0]["direction"] == "buy"
-            else (init_quantity * init_cost)
-        )
-        if init_value == 0:
-            return 0
-        if len(routes) > 1:
-            dest_ticker_price = self.get_rate(routes[1]["symbol"])[mode]
-            if routes[1]["direction"] == "buy":
-                cost = init_value / dest_ticker_price
-            else:
-                cost = init_value * dest_ticker_price
-            return cost
+        rates = {
+            route["symbol"]: self.get_rate(route["symbol"])[mode] for route in routes
+        }
+
+        if routes[0]["direction"] == "buy":
+            init_value = init_quantity * (1 / rates[routes[0]["symbol"]])
         else:
+            init_value = init_quantity * rates[routes[0]["symbol"]]
+
+        if init_value == 0 or len(routes) == 1:
             return init_value
+
+        if routes[1]["direction"] == "buy":
+            return init_value / rates[routes[1]["symbol"]]
+        else:
+            return init_value * rates[routes[1]["symbol"]]
 
     def get_held_assets(self):
         total_balance = self.exch.fetch_balance()["total"]
@@ -170,8 +169,8 @@ class CCXTExchange:
     def build_trade_routes(
         self,
         starting_code: str,
-        route_to_destination: dict[str, str],
-        is_buy: bool,
+        route_to_destination: Dict[str, str],
+        second_route: bool,
         quote_routes: List[str],
     ) -> List[Dict[str, Union[str, bool]]]:
         base, quote = (
@@ -179,17 +178,33 @@ class CCXTExchange:
             if route_to_destination["quote"] in quote_routes
             else (route_to_destination["quote"], route_to_destination["base"])
         )
-        routes = [
-            {"symbol": self.format_symbol(starting_code, quote), "direction": "sell"}
-        ]
-        if is_buy:
-            routes.append(
-                {"symbol": self.format_symbol(base, quote), "direction": "buy"}
-            )
-        else:
-            routes.append(
-                {"symbol": self.format_symbol(quote, base), "direction": "sell"}
-            )
+
+        # Create the first route outside the list to reduce the repetition
+        first_route = {
+            "symbol": self.format_symbol(starting_code, quote),
+            "direction": "sell",
+        }
+
+        # Start with only the first route
+        routes = [first_route]
+
+        # If is_buy is true, then a second route is needed
+        if second_route:
+            # Determine the direction of the second route based on is_buy
+            second_route_direction = "buy"
+
+            # Depending on is_buy, the symbol can be either base-quote or quote-base
+            second_route_symbol = self.format_symbol(base, quote)
+
+            # Create the second route
+            second_route = {
+                "symbol": second_route_symbol,
+                "direction": second_route_direction,
+            }
+
+            # Append the second route to the list
+            routes.append(second_route)
+
         return routes
 
     @staticmethod
