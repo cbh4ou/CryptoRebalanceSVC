@@ -1,24 +1,25 @@
 import ccxt
 from typing import Dict, List, Optional, Union
+from functools import lru_cache
 from crypto_balancer.order import Order
 
 
 class CCXTExchange:
     def __init__(
         self,
-        name: str,
-        api_key: str,
-        api_secret: str,
+        name,
+        api_key,
+        api_secret,
         do_cancel_orders: bool = True,
         sandbox: bool = True,
-    ) -> None:
+    ):
         """This class holds all exchange operation functions for building
-        trade routes, fetching portfolio details, tickers, and committing orders
+        trade routes, fetching portfolio details, tickers, and commiting orders
 
         Args:
-            name (str): Name of the exchange
-            api_key (str): api key
-            api_secret (str): api secret
+            name (_type_): Name of the exchange
+            api_key (_type_): api key
+            api_secret (_type_): api secret
             do_cancel_orders (bool, optional): cancels pending limit orders
                 before proceeding. Defaults to True.
         """
@@ -32,13 +33,12 @@ class CCXTExchange:
         self.exch.secret: str = api_secret
         self.exch.requests_trust_env: bool = True
         self.do_cancel_orders: bool = do_cancel_orders
-
-    def refresh_exch_data(self) -> None:
         self.exch.load_markets()
         self.tickers: str = self.exch.fetch_tickers()
         self.rates: Dict[str, Dict[str, float]] = self.get_rates()
         self.free_balances = self.get_free_balances
         self.markets = self.exch.markets
+        # self.cancel_orders
 
     def get_free_balances(self) -> Dict[str, str]:
         # gets free balances
