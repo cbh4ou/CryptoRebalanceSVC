@@ -32,14 +32,11 @@ class CCXTExchange:
         self.exch.secret: str = api_secret
         self.exch.requests_trust_env: bool = True
         self.do_cancel_orders: bool = do_cancel_orders
-
-    def refresh_exch_data(self) -> None:
         self.exch.load_markets()
-        self.tickers: str = self.exch.fetch_tickers()
-        self.rates: Dict[str, Dict[str, float]] = self.get_rates()
-        self.free_balances = self.get_free_balances
-        self.markets = self.exch.markets
-
+        
+    def reload_markets(self):
+        self.exch.load_markets(True)
+    
     def get_free_balances(self) -> Dict[str, str]:
         # gets free balances
         # If we cancel orders, we will use this to accurately get total free to trade
@@ -199,30 +196,13 @@ class CCXTExchange:
     def format_symbol(base: str, quote: str) -> str:
         return "{}/{}".format(base, quote)
 
-    def get_rates(self) -> Dict[str, Dict[str, float]]:
-        rates = {}
-        tickers = self.tickers
-        for pair in tickers:
-            ticker = tickers[pair]
-            if "ask" in ticker and "bid" in ticker:
-                high = ticker["ask"]
-                low = ticker["bid"]
-            else:
-                orderbook = self.exch.fetchOrderBook(pair)
-                high = orderbook["asks"][0][0]
-                low = orderbook["bids"][0][0]
-            mid = (high + low) / 2.0
-            rates[pair] = {"mid": mid, "high": high, "low": low}
-
-        return rates
-
     def get_rate(self, symbol: str) -> dict[str, float]:
-        ticker = self.tickers[symbol]
+        ticker = self.exch.fetch_ticker(symbol)
         if "ask" in ticker and "bid" in ticker:
             high = ticker["ask"]
             low = ticker["bid"]
         else:
-            orderbook = self.exch.fetchOrderBook(symbol)
+            orderbook = self.exch.fetch_order_book(symbol)
             high = orderbook["asks"][0][0]
             low = orderbook["bids"][0][0]
         mid = (high + low) / 2.0
@@ -232,7 +212,7 @@ class CCXTExchange:
         pass
 
     def get_limit(self, pair: str):
-        return self.markets[pair]["limits"]
+        return self.exch.markets[pair]["limits"]
 
     def fee(self):
         return self.exch.fees["trading"]["maker"]
