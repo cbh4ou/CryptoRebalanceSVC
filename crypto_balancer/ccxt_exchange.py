@@ -72,16 +72,14 @@ class CCXTExchange:
     def convert_route_to_cost(
         self, init_quantity: float, routes: List[Dict[str, Union[str, bool]]], mode: str
     ) -> float:
-        # Fetch the rate for each route and store in a dictionary.
         # This ensures all rates are fetched as closely together in time as possible.
         # Example: rates = {'BTC/USD': 50000, 'ETH/BTC': 0.02}
         rates = {
             route["symbol"]: self.get_rate(route["symbol"])[mode] for route in routes
         }
 
-        # Compute the initial value based on the first route.
-        # If the direction is 'buy', we divide the initial quantity by the rate.
-        # If the direction is 'sell', we multiply the initial quantity by the rate.
+        # If 'buy', we divide the initial quantity by the rate.
+        # If 'sell', we multiply the initial quantity by the rate.
         # Example: For a 'sell' operation of 1 BTC at a rate of 50000 USD/BTC,
         # the initial value is 50000 USD.
         if routes[0]["direction"] == "buy":
@@ -94,11 +92,6 @@ class CCXTExchange:
         if init_value == 0 or len(routes) == 1:
             return init_value
 
-        # If there is a second route, compute the final cost.
-        # If the direction is 'buy', we divide the initial value by
-        # the rate of the second route.
-        # If the direction is 'sell', we multiply the initial value by
-        # the rate of the second route.
         # Example: For a 'buy' operation of ETH with our 50000 USD
         # at a rate of 0.02 BTC/ETH, the final cost is 2.5 BTC.
         if routes[1]["direction"] == "buy":
