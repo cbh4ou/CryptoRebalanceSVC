@@ -99,41 +99,12 @@ class CCXTExchange:
         else:
             return init_value * rates[routes[1]["symbol"]]
 
-    def get_held_assets(self):
-        total_balance = self.exch.fetch_balance()["total"]
-        return [base for base in total_balance.keys() if total_balance[base] != 0]
-
     def get_trade_fees(
         self, symbol: str, type: str, side: str, amount: float, price: float
     ):
         return self.exch.calculate_fee(
             symbol=symbol, type=type, side=side, amount=amount, price=price
         )
-
-    def get_specific_pairs(self, pairs):
-        active_pairs = []
-        for i in pairs:
-            for j in pairs:
-                pair = self.format_symbol(i, j)
-                if (
-                    pair in self.exch.markets.keys()
-                    and self.exch.markets[pair]["active"]
-                ):
-                    active_pairs.append(pair)
-        return active_pairs
-
-    def get_all_held_symbols(self):
-        symbols = self.get_held_assets
-        active_symbols = []
-        for i in symbols:
-            for j in symbols:
-                symbol = self.format_symbol(i, j)
-                if (
-                    symbol in self.exch.markets.keys()
-                    and self.exch.markets[symbol]["active"]
-                ):
-                    active_symbols.append(symbol)
-        return active_symbols
 
     def get_smart_route(
         self, starting_code: str, destination_code: str
