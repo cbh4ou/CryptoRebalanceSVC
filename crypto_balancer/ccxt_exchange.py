@@ -170,7 +170,7 @@ class CCXTExchange:
         self,
         starting_code: str,
         route_to_destination: Dict[str, str],
-        second_route: bool,
+        is_second_route: bool,
         quote_routes: List[str],
     ) -> List[Dict[str, Union[str, bool]]]:
         base, quote = (
@@ -188,12 +188,12 @@ class CCXTExchange:
         # Start with only the first route
         routes = [first_route]
 
-        # If is_buy is true, then a second route is needed
-        if second_route:
-            # Determine the direction of the second route based on is_buy
+        # If is_second_route is true, then a second route is needed
+        if is_second_route:
+            # Determine the direction of the second route based on is_second_route
             second_route_direction = "buy"
 
-            # Depending on is_buy, the symbol can be either base-quote or quote-base
+            # Depending on is_second_route, the symbol can be either base-quote or quote-base
             second_route_symbol = self.format_symbol(base, quote)
 
             # Create the second route
